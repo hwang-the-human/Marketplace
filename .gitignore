@@ -1,0 +1,59 @@
+# Build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Temporary files and directories
+*.log
+*.tmp
+*.swp
+*.bak
+*.old
+*.DS_Store
+*.vscode/
+.idea/
+*.iml
+
+# Go module directory
+vendor/
+
+# Go module cache files
+go.sum
+
+# OS-specific files
+Thumbs.db
+.DS_Store
+
+# GoLand (JetBrains) specific files
+.idea/
+*.iml
+.idea/modules.xml
+.idea/workspace.xml
+.idea/go.iml
+.idea/*.iws
+.idea/*.ipr
+.idea/libraries/
+.idea/shelf/
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/misc.xml
+.idea/dictionaries
+.idea/httpRequests/
+
+# Generated files and caches
+*.log
+*.env
+*.local
+coverage.out
+
+# Docker-specific files
+docker-compose.override.yml
+docker-compose.local.yml
+
+# OS-specific files
+*.DS_Store
+._*
