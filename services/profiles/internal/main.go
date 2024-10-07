@@ -3,10 +3,12 @@ package main
 import (
 	"fmt"
 	"github.com/go-chi/chi"
+	validator2 "github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
 	"marketplace/services/profiles/internal/handlers"
+	"marketplace/services/profiles/internal/repositories"
 	"marketplace/services/profiles/internal/routes"
 	"marketplace/services/profiles/internal/services"
 	"marketplace/shared/config"
@@ -46,8 +48,13 @@ func main() {
 	kafka.InitKafkaProducer(brokers)
 	defer kafka.CloseKafkaProducer()
 
-	profileService := &services.ProfileService{DB: database}
-	profileHandler := &handlers.ProfileHandler{ProfileService: profileService}
+	validator := validator2.New()
+	profileRepository := &repositories.ProfileRepository{DB: database}
+	profileService := &services.ProfileService{ProfileRepository: profileRepository}
+	profileHandler := &handlers.ProfileHandler{
+		ProfileService: profileService,
+		Validator:      validator,
+	}
 
 	r := chi.NewRouter()
 	r.Mount("/api", routes.ProfileRouter(profileHandler))

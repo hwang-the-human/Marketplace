@@ -4,10 +4,11 @@ import (
 	"errors"
 	"gorm.io/gorm"
 	"marketplace/services/profiles/internal/models"
+	"marketplace/services/profiles/internal/repositories"
 )
 
 type ProfileService struct {
-	DB *gorm.DB
+	ProfileRepository *repositories.ProfileRepository
 }
 
 func (ps *ProfileService) GetProfileByID(id uint) (*models.Profile, error) {

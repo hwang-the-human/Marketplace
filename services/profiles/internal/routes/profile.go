@@ -9,9 +9,8 @@ func ProfileRouter(profileHandler *handlers.ProfileHandler) *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Route("/profiles", func(r chi.Router) {
-		r.Get("/{id}", profileHandler.GetProfile)
+		//r.Get("/{id}", profileHandler.GetProfile)
 		r.Post("/", profileHandler.CreateProfile)
-		r.Put("/{id}", profileHandler.UpdateProfile)
 	})
 
 	return r
