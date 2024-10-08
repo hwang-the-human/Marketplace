@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/cors"
+	"github.com/supertokens/supertokens-golang/recipe/jwt"
 	"github.com/supertokens/supertokens-golang/recipe/session"
 	"github.com/supertokens/supertokens-golang/recipe/thirdparty"
 	"github.com/supertokens/supertokens-golang/recipe/thirdparty/tpmodels"
@@ -13,13 +14,13 @@ import (
 
 func Init(r *chi.Mux) {
 	var (
-		stUri        = os.Getenv("AUTH_ST_URI")
+		stUri        = os.Getenv("ST_URI")
 		uri          = os.Getenv("AUTH_URI")
 		frontUri     = os.Getenv("FRONT_URI")
-		googleClient = os.Getenv("AUTH_ST_GOOGLE_CLIENT")
-		googleSecret = os.Getenv("AUTH_ST_GOOGLE_SECRET")
-		githubClient = os.Getenv("AUTH_ST_GITHUB_CLIENT")
-		githubSecret = os.Getenv("AUTH_ST_GITHUB_SECRET")
+		googleClient = os.Getenv("ST_GOOGLE_CLIENT")
+		googleSecret = os.Getenv("ST_GOOGLE_SECRET")
+		githubClient = os.Getenv("ST_GITHUB_CLIENT")
+		githubSecret = os.Getenv("ST_GITHUB_SECRET")
 	)
 
 	apiBasePath := "/auth"
@@ -37,7 +38,6 @@ func Init(r *chi.Mux) {
 			WebsiteBasePath: &websiteBasePath,
 		},
 		RecipeList: []supertokens.Recipe{
-			session.Init(nil),
 			thirdparty.Init(&tpmodels.TypeInput{
 				SignInAndUpFeature: tpmodels.TypeInputSignInAndUp{
 					Providers: []tpmodels.ProviderInput{
@@ -66,6 +66,8 @@ func Init(r *chi.Mux) {
 					},
 				},
 			}),
+			session.Init(nil),
+			jwt.Init(nil),
 		},
 	})
 

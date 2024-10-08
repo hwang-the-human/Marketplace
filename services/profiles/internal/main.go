@@ -5,6 +5,8 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
+	"github.com/supertokens/supertokens-golang/recipe/jwt"
+	"github.com/supertokens/supertokens-golang/supertokens"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	ps "marketplace/services/profiles/internal/grpc"
@@ -12,6 +14,7 @@ import (
 	"marketplace/services/profiles/internal/services"
 	"marketplace/shared/config"
 	"marketplace/shared/db"
+	"marketplace/shared/interceptors"
 	"marketplace/shared/kafka"
 	"marketplace/shared/models"
 	pb "marketplace/shared/protobuf"
@@ -34,6 +37,8 @@ func main() {
 		dbPort     = os.Getenv("DB_PORT")
 		dbName     = os.Getenv("PROFILES_DB_NAME")
 		kafkaHost  = os.Getenv("KAFKA_HOST")
+		stUri      = os.Getenv("ST_URI")
+		authUri    = os.Getenv("AUTH_URI")
 	)
 
 	dsn := fmt.Sprintf("host=%s user=%s password=%s port=%s dbname=%s sslmode=disable",
@@ -68,7 +73,8 @@ func main() {
 		logrus.Fatalf("Failed to listen on port %s: %v", grpcPort, err)
 	}
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(interceptors.JWTAuth))
 	profileGrpcServer := &ps.ProfileServer{ProfileService: profileService}
 
 	pb.RegisterProfileServiceServer(grpcServer, profileGrpcServer)
@@ -78,4 +84,16 @@ func main() {
 	if err := grpcServer.Serve(lis); err != nil {
 		logrus.Fatalf("Failed to serve gRPC server: %v", err)
 	}
+
+	supertokens.Init(supertokens.TypeInput{
+		AppInfo: supertokens.AppInfo{
+			APIDomain: authUri,
+		},
+		Supertokens: &supertokens.ConnectionInfo{
+			ConnectionURI: stUri,
+		},
+		RecipeList: []supertokens.Recipe{
+			jwt.Init(nil),
+		},
+	})
 }
