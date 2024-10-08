@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"fmt"
 	"github.com/IBM/sarama"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -14,8 +15,6 @@ func InitKafkaProducer(brokers []string) {
 	config := sarama.NewConfig()
 	config.Producer.Return.Successes = true
 	config.Producer.RequiredAcks = sarama.WaitForAll
-	//config.Producer.Idempotent = true
-	//config.Net.MaxOpenRequests = 1
 
 	producer, err := sarama.NewSyncProducer(brokers, config)
 	if err != nil {
@@ -124,8 +123,7 @@ func CloseKafkaProducer() {
 
 func sendMessageToKafka(db *gorm.DB, producer sarama.SyncProducer, message models.OutboxMessage) error {
 	if message.IdempotencyKey != nil && alreadyProcessed(db, message.IdempotencyKey) {
-		logrus.Warnf("Message with idempotency key %s already processed", *message.IdempotencyKey)
-		return nil
+		return fmt.Errorf("message with idempotency key %s already processed", *message.IdempotencyKey)
 	}
 
 	msg := &sarama.ProducerMessage{

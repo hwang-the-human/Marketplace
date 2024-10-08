@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package profiles;
+
+option go_package = "shared/protobuf;profiles";
+
+service ProfileService {
+  rpc GetProfileByID (GetProfileRequest) returns (GetProfileResponse);
+  rpc CreateProfile (CreateProfileRequest) returns (CreateProfileResponse);
+}
+
+message GetProfileRequest {
+  uint32 id = 1;
+}
+
+message GetProfileResponse {
+  Profile profile = 1;
+}
+
+message CreateProfileRequest {
+  string first_name = 1;
+  string last_name = 2;
+}
+
+message CreateProfileResponse {
+  Profile profile = 1;
+}
+
+message Profile {
+  uint32 id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string created_at = 4;
+  string updated_at = 5;
+}

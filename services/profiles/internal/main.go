@@ -2,20 +2,20 @@ package main
 
 import (
 	"fmt"
-	"github.com/go-chi/chi"
-	validator2 "github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
-	"marketplace/services/profiles/internal/handlers"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
+	ps "marketplace/services/profiles/internal/grpc"
 	"marketplace/services/profiles/internal/repositories"
-	"marketplace/services/profiles/internal/routes"
 	"marketplace/services/profiles/internal/services"
 	"marketplace/shared/config"
 	"marketplace/shared/db"
 	"marketplace/shared/kafka"
 	"marketplace/shared/models"
-	"net/http"
+	pb "marketplace/shared/protobuf"
+	"net"
 	"os"
 )
 
@@ -27,7 +27,7 @@ func main() {
 	}
 
 	var (
-		port       = os.Getenv("PROFILES_PORT")
+		grpcPort   = os.Getenv("PROFILES_GRPC_PORT")
 		dbUser     = os.Getenv("DB_USER")
 		dbPassword = os.Getenv("DB_PASSWORD")
 		dbHost     = os.Getenv("DB_HOST")
@@ -48,31 +48,34 @@ func main() {
 	kafka.InitKafkaProducer(brokers)
 	defer kafka.CloseKafkaProducer()
 
-	validator := validator2.New()
 	profileRepository := &repositories.ProfileRepository{DB: database}
 	profileService := &services.ProfileService{ProfileRepository: profileRepository}
-	profileHandler := &handlers.ProfileHandler{
-		ProfileService: profileService,
-		Validator:      validator,
-	}
-
-	r := chi.NewRouter()
-	r.Mount("/api", routes.ProfileRouter(profileHandler))
 
 	c := cron.New()
-	_, err := c.AddFunc("@every 1s", func() {
+	if _, err := c.AddFunc("@every 1s", func() {
 		kafka.ProcessOutboxMessages(database, kafka.Producer)
-	})
-	logrus.Infof("Successfully started outbox message processing every 1s")
-	if err != nil {
+	}); err != nil {
 		logrus.Fatalf("Failed to add cron job: %v", err)
 	}
 
 	c.Start()
 	defer c.Stop()
 
-	logrus.Infof("Starting profiles service on port %s", port)
-	if err := http.ListenAndServe(":"+port, r); err != nil {
-		logrus.Fatalf("Error starting server: %v", err)
+	logrus.Infof("Successfully started outbox message processing every 1s")
+
+	lis, err := net.Listen("tcp", ":"+grpcPort)
+	if err != nil {
+		logrus.Fatalf("Failed to listen on port %s: %v", grpcPort, err)
+	}
+
+	grpcServer := grpc.NewServer()
+	profileGrpcServer := &ps.ProfileServer{ProfileService: profileService}
+
+	pb.RegisterProfileServiceServer(grpcServer, profileGrpcServer)
+	reflection.Register(grpcServer)
+
+	logrus.Infof("Starting gRPC server on port %s", grpcPort)
+	if err := grpcServer.Serve(lis); err != nil {
+		logrus.Fatalf("Failed to serve gRPC server: %v", err)
 	}
 }
