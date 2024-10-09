@@ -9,6 +9,7 @@ import (
 	"github.com/supertokens/supertokens-golang/supertokens"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+	"log"
 	ps "marketplace/services/profiles/internal/grpc"
 	"marketplace/services/profiles/internal/repositories"
 	"marketplace/services/profiles/internal/services"
@@ -49,6 +50,20 @@ func main() {
 
 	database := db.GetDB()
 
+	if err := supertokens.Init(supertokens.TypeInput{
+		AppInfo: supertokens.AppInfo{
+			APIDomain: authUri,
+		},
+		Supertokens: &supertokens.ConnectionInfo{
+			ConnectionURI: stUri,
+		},
+		RecipeList: []supertokens.Recipe{
+			jwt.Init(nil),
+		},
+	}); err != nil {
+		log.Fatalf("Error initializing Supertokens: %v", err)
+	}
+
 	brokers := []string{kafkaHost}
 	kafka.InitKafkaProducer(brokers)
 	defer kafka.CloseKafkaProducer()
@@ -80,20 +95,8 @@ func main() {
 	pb.RegisterProfileServiceServer(grpcServer, profileGrpcServer)
 	reflection.Register(grpcServer)
 
-	logrus.Infof("Starting gRPC server on port %s", grpcPort)
+	logrus.Infof("Starting Profile GRPC server on port %s", grpcPort)
 	if err := grpcServer.Serve(lis); err != nil {
 		logrus.Fatalf("Failed to serve gRPC server: %v", err)
 	}
-
-	supertokens.Init(supertokens.TypeInput{
-		AppInfo: supertokens.AppInfo{
-			APIDomain: authUri,
-		},
-		Supertokens: &supertokens.ConnectionInfo{
-			ConnectionURI: stUri,
-		},
-		RecipeList: []supertokens.Recipe{
-			jwt.Init(nil),
-		},
-	})
 }

@@ -2,17 +2,16 @@ package config
 
 import (
 	"github.com/go-chi/chi"
-	"github.com/go-chi/cors"
+	"github.com/sirupsen/logrus"
 	"github.com/supertokens/supertokens-golang/recipe/jwt"
 	"github.com/supertokens/supertokens-golang/recipe/session"
 	"github.com/supertokens/supertokens-golang/recipe/thirdparty"
 	"github.com/supertokens/supertokens-golang/recipe/thirdparty/tpmodels"
 	"github.com/supertokens/supertokens-golang/supertokens"
-	"log"
 	"os"
 )
 
-func Init(r *chi.Mux) {
+func InitSupertokens(r *chi.Mux) {
 	var (
 		stUri        = os.Getenv("ST_URI")
 		uri          = os.Getenv("AUTH_URI")
@@ -72,18 +71,10 @@ func Init(r *chi.Mux) {
 	})
 
 	if err != nil {
-		log.Fatalf("Error initializing Supertokens: %v", err)
+		logrus.Fatalf("Error initializing Supertokens: %v", err)
 	}
-
-	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins: []string{frontUri},
-		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders: append([]string{"Content-Type"},
-			supertokens.GetAllCORSHeaders()...),
-		AllowCredentials: true,
-	}))
 
 	r.Use(supertokens.Middleware)
 
-	log.Println("Successfully initialized Supertokens")
+	logrus.Info("Successfully initialized Supertokens")
 }

@@ -9,7 +9,7 @@ type ProfileService struct {
 	ProfileRepository *repositories.ProfileRepository
 }
 
-func (ps *ProfileService) GetProfileByID(id uint) (*models.Profile, error) {
+func (ps *ProfileService) GetProfileByID(id string) (*models.Profile, error) {
 	return ps.ProfileRepository.GetProfileById(id)
 }
 

@@ -23,7 +23,7 @@ func main() {
 
 	r := chi.NewRouter()
 
-	config.Init(r)
+	config.InitSupertokens(r)
 
 	logrus.Infof("" + port)
 
