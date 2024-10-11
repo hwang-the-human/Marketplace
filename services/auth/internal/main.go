@@ -5,6 +5,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 	"marketplace/services/auth/internal/config"
+	"marketplace/services/auth/internal/grpc_clients"
 	sharedConfig "marketplace/shared/config"
 	"net/http"
 	"os"
@@ -21,9 +22,11 @@ func main() {
 		port = os.Getenv("AUTH_PORT")
 	)
 
+	profileClient := grpc_clients.NewProfileClient()
+
 	r := chi.NewRouter()
 
-	config.InitSupertokens(r)
+	config.InitSupertokens(r, profileClient)
 
 	logrus.Infof("" + port)
 

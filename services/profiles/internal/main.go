@@ -18,6 +18,7 @@ import (
 	"marketplace/shared/interceptors"
 	"marketplace/shared/kafka"
 	"marketplace/shared/models"
+	"marketplace/shared/outbox"
 	pb "marketplace/shared/protobuf"
 	"net"
 	"os"
@@ -45,10 +46,21 @@ func main() {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s port=%s dbname=%s sslmode=disable",
 		dbHost, dbUser, dbPassword, dbPort, dbName)
 
-	db.InitDB(dsn, &models.OutboxMessage{})
-	defer db.CloseDB()
+	database, err := db.NewPostgresDB(dsn)
+	if err != nil {
+		logrus.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer func(database db.Database) {
+		err := database.CloseDB()
+		if err != nil {
+			logrus.Errorf("Failed to close database: %v", err)
+		}
+	}(database)
 
-	database := db.GetDB()
+	err = database.Migrate(&models.OutboxMessage{})
+	if err != nil {
+		logrus.Fatalf("Migration failed: %v", err)
+	}
 
 	if err := supertokens.Init(supertokens.TypeInput{
 		AppInfo: supertokens.AppInfo{
@@ -61,19 +73,28 @@ func main() {
 			jwt.Init(nil),
 		},
 	}); err != nil {
-		log.Fatalf("Error initializing Supertokens: %v", err)
+		logrus.Fatalf("Error initializing Supertokens: %v", err)
 	}
 
 	brokers := []string{kafkaHost}
-	kafka.InitKafkaProducer(brokers)
-	defer kafka.CloseKafkaProducer()
+	kafkaProducer, err := kafka.NewProducer(brokers)
+	if err != nil {
+		log.Fatalf("Failed to create Kafka producer: %v", err)
+	}
+	defer func(kafkaProducer kafka.Producer) {
+		err := kafkaProducer.Close()
+		if err != nil {
+			log.Printf("Failed to close Kafka producer: %v", err)
+		}
+	}(kafkaProducer)
 
-	profileRepository := &repositories.ProfileRepository{DB: database}
-	profileService := &services.ProfileService{ProfileRepository: profileRepository}
+	outboxService := outbox.NewOutbox(database, kafkaProducer)
 
 	c := cron.New()
 	if _, err := c.AddFunc("@every 1s", func() {
-		kafka.ProcessOutboxMessages(database, kafka.Producer)
+		if err := outboxService.ProcessOutboxMessages(); err != nil {
+			logrus.Errorf("Failed to process outbox messages: %v", err)
+		}
 	}); err != nil {
 		logrus.Fatalf("Failed to add cron job: %v", err)
 	}
@@ -83,6 +104,9 @@ func main() {
 
 	logrus.Infof("Successfully started outbox message processing every 1s")
 
+	profileRepository := repositories.NewProfileRepository(database)
+	profileService := services.NewProfileService(profileRepository)
+
 	lis, err := net.Listen("tcp", ":"+grpcPort)
 	if err != nil {
 		logrus.Fatalf("Failed to listen on port %s: %v", grpcPort, err)
@@ -90,7 +114,7 @@ func main() {
 
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(interceptors.JWTAuth))
-	profileGrpcServer := &ps.ProfileServer{ProfileService: profileService}
+	profileGrpcServer := ps.NewProfileServer(profileService)
 
 	pb.RegisterProfileServiceServer(grpcServer, profileGrpcServer)
 	reflection.Register(grpcServer)

@@ -7,12 +7,16 @@ import (
 	pb "marketplace/shared/protobuf"
 )
 
-type ProfileServer struct {
+type profileServer struct {
 	pb.UnimplementedProfileServiceServer
-	ProfileService *services.ProfileService
+	ProfileService services.ProfileService
 }
 
-func (s *ProfileServer) GetProfileByID(ctx context.Context, req *pb.GetProfileRequest) (*pb.GetProfileResponse, error) {
+func NewProfileServer(profileService services.ProfileService) pb.ProfileServiceServer {
+	return &profileServer{ProfileService: profileService}
+}
+
+func (s *profileServer) GetProfileByID(ctx context.Context, req *pb.GetProfileRequest) (*pb.GetProfileResponse, error) {
 	profile, err := s.ProfileService.GetProfileByID(req.Id)
 	if err != nil {
 		return nil, err
@@ -29,7 +33,7 @@ func (s *ProfileServer) GetProfileByID(ctx context.Context, req *pb.GetProfileRe
 	}, nil
 }
 
-func (s *ProfileServer) CreateProfile(ctx context.Context, req *pb.CreateProfileRequest) (*pb.CreateProfileResponse, error) {
+func (s *profileServer) CreateProfile(ctx context.Context, req *pb.CreateProfileRequest) (*pb.CreateProfileResponse, error) {
 	profile := &models.Profile{
 		FirstName: req.FirstName,
 		LastName:  req.LastName,

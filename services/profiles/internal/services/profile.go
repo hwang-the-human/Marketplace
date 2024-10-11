@@ -5,14 +5,23 @@ import (
 	"marketplace/services/profiles/internal/repositories"
 )
 
-type ProfileService struct {
-	ProfileRepository *repositories.ProfileRepository
+type ProfileService interface {
+	GetProfileByID(id string) (*models.Profile, error)
+	CreateProfile(profile *models.Profile) (*models.Profile, error)
 }
 
-func (ps *ProfileService) GetProfileByID(id string) (*models.Profile, error) {
+type profileService struct {
+	ProfileRepository repositories.ProfileRepository
+}
+
+func NewProfileService(profileRepository repositories.ProfileRepository) ProfileService {
+	return &profileService{ProfileRepository: profileRepository}
+}
+
+func (ps *profileService) GetProfileByID(id string) (*models.Profile, error) {
 	return ps.ProfileRepository.GetProfileById(id)
 }
 
-func (ps *ProfileService) CreateProfile(profile *models.Profile) (*models.Profile, error) {
+func (ps *profileService) CreateProfile(profile *models.Profile) (*models.Profile, error) {
 	return ps.ProfileRepository.CreateProfile(profile)
 }

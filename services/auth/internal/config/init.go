@@ -8,10 +8,11 @@ import (
 	"github.com/supertokens/supertokens-golang/recipe/thirdparty"
 	"github.com/supertokens/supertokens-golang/recipe/thirdparty/tpmodels"
 	"github.com/supertokens/supertokens-golang/supertokens"
+	"marketplace/services/auth/internal/grpc_clients"
 	"os"
 )
 
-func InitSupertokens(r *chi.Mux) {
+func InitSupertokens(r *chi.Mux, profileClient *grpc_clients.ProfileClient) {
 	var (
 		stUri        = os.Getenv("ST_URI")
 		uri          = os.Getenv("AUTH_URI")
