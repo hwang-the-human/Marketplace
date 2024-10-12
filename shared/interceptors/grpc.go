@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/MicahParks/keyfunc/v2"
 	"github.com/golang-jwt/jwt/v5"
+	stJWT "github.com/supertokens/supertokens-golang/recipe/jwt"
 	"github.com/supertokens/supertokens-golang/recipe/session/sessmodels"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -13,10 +14,18 @@ import (
 	"time"
 )
 
-var jwksCache *sessmodels.GetJWKSResult = nil
-var mutex sync.RWMutex
-var JWKCacheMaxAgeInMs int64 = 60000
-var coreUrl = os.Getenv("ST_URI") + "/.well-known/jwks.json"
+var (
+	jwksCache          *sessmodels.GetJWKSResult = nil
+	mutex              sync.RWMutex
+	JWKCacheMaxAgeInMs int64 = 60000
+	coreUrl                  = os.Getenv("ST_URI") + "/.well-known/jwks.json"
+)
+
+var (
+	jwtToken     string
+	jwtExpiresAt time.Time
+	mu           sync.Mutex
+)
 
 func getJWKSFromCacheIfPresent() *sessmodels.GetJWKSResult {
 	mutex.RLock()
@@ -124,7 +133,7 @@ func JWTAuth(
 	return handler(ctx, req)
 }
 
-func AttachTokenInterceptor(jwtToken string) grpc.UnaryClientInterceptor {
+func AttachJWT() grpc.UnaryClientInterceptor {
 	return func(
 		ctx context.Context,
 		method string,
@@ -133,8 +142,38 @@ func AttachTokenInterceptor(jwtToken string) grpc.UnaryClientInterceptor {
 		invoker grpc.UnaryInvoker,
 		opts ...grpc.CallOption,
 	) error {
+		jwtToken, err := getJWT()
+		if err != nil {
+			return err
+		}
 		md := metadata.Pairs("authorization", "Bearer "+jwtToken)
 		ctx = metadata.NewOutgoingContext(ctx, md)
 		return invoker(ctx, method, req, reply, cc, opts...)
 	}
+}
+
+func getJWT() (string, error) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if jwtToken == "" || time.Now().After(jwtExpiresAt) {
+		token, err := createJWT()
+		if err != nil {
+			return "", err
+		}
+		jwtToken = token
+		jwtExpiresAt = time.Now().Add(1 * time.Hour)
+	}
+
+	return jwtToken, nil
+}
+
+func createJWT() (string, error) {
+	jwtResponse, err := stJWT.CreateJWT(map[string]interface{}{
+		"source": "microservice",
+	}, nil, nil)
+	if err != nil {
+		return "", err
+	}
+	return jwtResponse.OK.Jwt, nil
 }

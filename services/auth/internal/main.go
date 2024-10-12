@@ -22,7 +22,11 @@ func main() {
 		port = os.Getenv("AUTH_PORT")
 	)
 
-	profileClient := grpc_clients.NewProfileClient()
+	profileClient, err := grpc_clients.NewProfileClient()
+
+	if err != nil {
+		logrus.Fatalf("Error creating profile client: %v", err)
+	}
 
 	r := chi.NewRouter()
 
