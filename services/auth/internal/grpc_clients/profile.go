@@ -9,11 +9,11 @@ import (
 	"os"
 )
 
-type ProfileClient struct {
+type profile struct {
 	client pb.ProfileServiceClient
 }
 
-func NewProfileClient() *ProfileClient {
+func NewProfileClient() pb.ProfileServiceClient {
 	profilesAddress := os.Getenv("PROFILES_GRPC_HOST") + ":" + os.Getenv("PROFILES_GRPC_PORT")
 	conn, err := grpc.NewClient(profilesAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -22,14 +22,13 @@ func NewProfileClient() *ProfileClient {
 	}
 
 	client := pb.NewProfileServiceClient(conn)
-	return &ProfileClient{client: client}
+	return &profile{client: client}
 }
 
-func (pc *ProfileClient) GetProfileByID(id string) (*pb.Profile, error) {
-	req := &pb.GetProfileRequest{Id: id}
-	res, err := pc.client.GetProfileByID(context.Background(), req)
-	if err != nil {
-		return nil, err
-	}
-	return res.Profile, nil
+func (pc *profile) GetProfileByID(ctx context.Context, req *pb.GetProfileRequest, opts ...grpc.CallOption) (*pb.GetProfileResponse, error) {
+	return pc.client.GetProfileByID(ctx, req, opts...)
+}
+
+func (pc *profile) CreateProfile(ctx context.Context, req *pb.CreateProfileRequest, opts ...grpc.CallOption) (*pb.CreateProfileResponse, error) {
+	return pc.client.CreateProfile(ctx, req, opts...)
 }
