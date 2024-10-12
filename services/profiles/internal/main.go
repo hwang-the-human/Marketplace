@@ -64,7 +64,9 @@ func main() {
 
 	if err := supertokens.Init(supertokens.TypeInput{
 		AppInfo: supertokens.AppInfo{
-			APIDomain: authUri,
+			AppName:       "any",
+			WebsiteDomain: "any",
+			APIDomain:     authUri,
 		},
 		Supertokens: &supertokens.ConnectionInfo{
 			ConnectionURI: stUri,

@@ -27,28 +27,7 @@ var (
 	mu           sync.Mutex
 )
 
-func getJWKSFromCacheIfPresent() *sessmodels.GetJWKSResult {
-	mutex.RLock()
-	defer mutex.RUnlock()
-	if jwksCache != nil {
-		// This means that we have valid JWKs for the given core path
-		// We check if we need to refresh before returning
-		currentTime := time.Now().UnixNano() / int64(time.Millisecond)
-
-		// This means that the value in cache is not expired, in this case we return the cached value
-		//
-		// Note that this also means that the SDK will not try to query any other Core (if there are multiple)
-		// if it has a valid cache entry from one of the core URLs. It will only attempt to fetch
-		// from the cores again after the entry in the cache is expired
-		if (currentTime - jwksCache.LastFetched) < JWKCacheMaxAgeInMs {
-			return jwksCache
-		}
-	}
-
-	return nil
-}
-
-func GetJWKS() (*keyfunc.JWKS, error) {
+func getJWKS() (*keyfunc.JWKS, error) {
 	resultFromCache := getJWKSFromCacheIfPresent()
 
 	if resultFromCache != nil {
@@ -84,6 +63,53 @@ func GetJWKS() (*keyfunc.JWKS, error) {
 	return nil, jwksError
 }
 
+func getJWKSFromCacheIfPresent() *sessmodels.GetJWKSResult {
+	mutex.RLock()
+	defer mutex.RUnlock()
+	if jwksCache != nil {
+		// This means that we have valid JWKs for the given core path
+		// We check if we need to refresh before returning
+		currentTime := time.Now().UnixNano() / int64(time.Millisecond)
+
+		// This means that the value in cache is not expired, in this case we return the cached value
+		//
+		// Note that this also means that the SDK will not try to query any other Core (if there are multiple)
+		// if it has a valid cache entry from one of the core URLs. It will only attempt to fetch
+		// from the cores again after the entry in the cache is expired
+		if (currentTime - jwksCache.LastFetched) < JWKCacheMaxAgeInMs {
+			return jwksCache
+		}
+	}
+
+	return nil
+}
+
+func getJWT() (string, error) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if jwtToken == "" || time.Now().After(jwtExpiresAt) {
+		token, err := createJWT()
+		if err != nil {
+			return "", err
+		}
+		jwtToken = token
+		jwtExpiresAt = time.Now().Add(1 * time.Hour)
+	}
+
+	return jwtToken, nil
+}
+
+func createJWT() (string, error) {
+	jwtResponse, err := stJWT.CreateJWT(map[string]interface{}{
+		"source": "microservice",
+	}, nil, nil)
+	if err != nil {
+		return "", err
+	}
+	return jwtResponse.OK.Jwt, nil
+}
+
 func JWTAuth(
 	ctx context.Context,
 	req interface{},
@@ -95,13 +121,13 @@ func JWTAuth(
 		return nil, fmt.Errorf("metadata not provided")
 	}
 
-	authHeader := md["authorization"]
+	authHeader := md["Authorization"]
 	if len(authHeader) == 0 {
 		return nil, fmt.Errorf("authorization token not provided")
 	}
 
 	jwtString := authHeader[0][7:]
-	jwks, err := GetJWKS()
+	jwks, err := getJWKS()
 	if err != nil {
 		return nil, fmt.Errorf("could not get JWKS: %v", err)
 	}
@@ -146,34 +172,8 @@ func AttachJWT() grpc.UnaryClientInterceptor {
 		if err != nil {
 			return err
 		}
-		md := metadata.Pairs("authorization", "Bearer "+jwtToken)
+		md := metadata.Pairs("Authorization", "Bearer "+jwtToken)
 		ctx = metadata.NewOutgoingContext(ctx, md)
 		return invoker(ctx, method, req, reply, cc, opts...)
 	}
-}
-
-func getJWT() (string, error) {
-	mu.Lock()
-	defer mu.Unlock()
-
-	if jwtToken == "" || time.Now().After(jwtExpiresAt) {
-		token, err := createJWT()
-		if err != nil {
-			return "", err
-		}
-		jwtToken = token
-		jwtExpiresAt = time.Now().Add(1 * time.Hour)
-	}
-
-	return jwtToken, nil
-}
-
-func createJWT() (string, error) {
-	jwtResponse, err := stJWT.CreateJWT(map[string]interface{}{
-		"source": "microservice",
-	}, nil, nil)
-	if err != nil {
-		return "", err
-	}
-	return jwtResponse.OK.Jwt, nil
 }

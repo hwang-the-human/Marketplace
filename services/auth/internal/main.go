@@ -19,7 +19,7 @@ func main() {
 	}
 
 	var (
-		port = os.Getenv("AUTH_PORT")
+		port = os.Getenv("AUTH_REST_PORT")
 	)
 
 	profileClient, err := grpc_clients.NewProfileClient()
