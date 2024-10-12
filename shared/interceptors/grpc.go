@@ -22,7 +22,7 @@ var (
 )
 
 var (
-	jwtToken     string
+	jwtToken     string // TODO: Save this in a more secure way
 	jwtExpiresAt time.Time
 	mu           sync.Mutex
 )

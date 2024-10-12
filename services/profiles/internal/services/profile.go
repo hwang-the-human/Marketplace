@@ -25,3 +25,7 @@ func (ps *profileService) GetProfileByID(id string) (*models.Profile, error) {
 func (ps *profileService) CreateProfile(profile *models.Profile) (*models.Profile, error) {
 	return ps.ProfileRepository.CreateProfile(profile)
 }
+
+func (ps *profileService) DeleteProfileByID(id string) error {
+	return ps.ProfileRepository.DeleteProfileById(id)
+}

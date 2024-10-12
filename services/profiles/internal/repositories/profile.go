@@ -12,6 +12,7 @@ import (
 type ProfileRepository interface {
 	GetProfileById(id string) (*models.Profile, error)
 	CreateProfile(profile *models.Profile) (*models.Profile, error)
+	DeleteProfileById(id string) error
 }
 
 type profileRepository struct {
@@ -45,4 +46,17 @@ func (pr *profileRepository) CreateProfile(profile *models.Profile) (*models.Pro
 		return nil, result.Error
 	}
 	return profile, nil
+}
+
+func (pr *profileRepository) DeleteProfileById(id string) error {
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		return fmt.Errorf("invalid UUID format: %v", err)
+	}
+
+	result := pr.Database.GetDB().Delete(&models.Profile{}, "id = ?", uid)
+	if result.Error != nil {
+		return result.Error
+	}
+	return nil
 }
